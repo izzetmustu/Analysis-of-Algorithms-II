@@ -9,6 +9,7 @@ Name: Mustafa Izzet Mustu
 ID: 504211564
 */
 
+// THIS CLASS HOLDS THE COORDINATES IN THE NODE
 class Coordinate2D{
 public:
     int x, y;
@@ -29,6 +30,7 @@ public:
     }  
 };
 
+// EVERY SHIP HAVE STARTING COORDINATE, ENDING COORDINATE AND ALL THE COORDINATES BETWEEN THEM
 class Ship{
 public:
     Coordinate2D startCoordinate;
@@ -46,6 +48,7 @@ public:
 
 };
 
+// PLAYERS HAVE STARTING POINT ON THE BOARD, HAVE SHIPS AND THE TOTAL SHIP AREA
 class Player{
 public:
     Coordinate2D init;
@@ -66,14 +69,16 @@ public:
     ~Player(){}
 };
 
+// EVERY NODE HAS COORDINATE, NODE INDEX, CONNECTED NODES LİST, AND PLAYERS SHIP NUMBERS
 struct Node{
-    int vertice_number;
+    int vertice_number;                 // NODE INDEX
     Coordinate2D coordinate;
-    int player1ShipNumber;
+    int player1ShipNumber;              // SINCE EACH POINT ON THE BOARD CAN CONTAIN 2 OR MORE SHIPS OF THE SAME PLAYER, WE NEED TO STORE IT WITH NUMBER, NOT WITH BOOLEAN
     int player2ShipNumber;
-    std::vector<Node*> connectedNodes; // top > left > bottom > right
+    std::vector<Node*> connectedNodes; // THIS LIST WILL STORE THE CONNECTED NODES WITH LOWEST INDEX=HIGHEST PRIORITY. TOP > LEFT > BOTTOM > RIGHT
 };
 
+// THIS CLASS HOLDS THE GRAPH STRUCTURE, BFS AND DFS ALGORITHMS, AND PLAYER POINTERS WHICH WILL PLAY THE GAME
 class GameBoard{
 public:
     int boardSize;
@@ -95,6 +100,7 @@ GameBoard::GameBoard(int boardSize, Player* p1, Player* p2){
     numNode = boardSize*boardSize;
     graph = std::vector<Node>(numNode);
 
+    // SINCE THE BOARD IS SQUARE, WE CAN ITERATE IN 2 FOORLOPS AND ASSIGN COORDINATES, INDEXES AND WE CAN CREATE EDGES
     for(int i = 0; i < boardSize; ++i){
         for(int j = 0; j < boardSize; ++j){
             int index = i*boardSize + j;
@@ -120,7 +126,7 @@ GameBoard::GameBoard(int boardSize, Player* p1, Player* p2){
                 graph[index].connectedNodes.push_back(&graph[right]);
             }
 
-            // ADD SHIPS ON THE NODE IF THERE IS ONE
+            // ADD SHIPS OF THE PLAYERS ON THE NODE IF THERE ARE THE CURRENT NODE
             for(auto it = player1->ships.begin(); it!=player1->ships.end(); it++){
                 for(auto it2 = it->coordinates.begin(); it2 != it->coordinates.end(); it2++) {
                     if(graph[index].coordinate == *it2){
@@ -141,65 +147,76 @@ GameBoard::GameBoard(int boardSize, Player* p1, Player* p2){
 }
 
 void GameBoard::BFS(int p1index, int p2index){
-    std::vector<bool> p1Visited(numNode, false);
-    std::vector<bool> p1NeighbourList(numNode, false);
-    std::vector<bool> p2Visited(numNode, false);
-    std::vector<bool> p2NeighbourList(numNode, false);
+    // WE HOLD 2 LISTS FOR EACH PLAYERS, FIRST ONE KEEPS VISITED NODES AND THE SECOND ONE IS USED TO CHECK IF WE HAVE ADDED AN NONVISITED NODE TO THE QUEUE
+    std::vector<bool> p1Visited(numNode, false);        // HOLDS VISITED NODES OF FIRST PLAYER
+    std::vector<bool> p1NeighbourList(numNode, false);  // HOLDS LIST OF QUEUED NODES OF THE SECOND PLAYER
+    std::vector<bool> p2Visited(numNode, false);        // HOLDS VISITED NODES OF FIRST PLAYER
+    std::vector<bool> p2NeighbourList(numNode, false);  // HOLDS LIST OF QUEUED NODES OF THE SECOND PLAYER
     int p1KeptMemory = 0, p2KeptMemory = 0;
     int p1numVisited = 0, p2numVisited = 0;
+
+    // QUEUES ARE USED TO HOLD NONVISITED NODES
     std::queue<int> p1queue;
     std::queue<int> p2queue;
     bool p1Win = false, p2Win = false;
 
+    // WE FIRST PUSH THE STARTING NODES TO THE QUEUES
     p1queue.push(p1index);
     p1KeptMemory++;
     p2queue.push(p2index);
     p2KeptMemory++;
-    int u, v;
+    int u, v;   // HOLDS THE CURRENT NODE INDEXES, u:PLAYER 1, v:PLAYER 2
 
+    // LOOP UNTIL ALL THE NODES VISITED OR 1 OF THE PLAYERS WON
     while(!p1queue.empty() && !p2queue.empty() && !p1Win && !p2Win){
 
         //PLAYER 1 MAKES MOVE
         u = p1queue.front();
-        p1numVisited++;
-        p1Visited[u] = true;
+        p1numVisited++;         // PLAYER 1 VISITED A NODE
+        p1Visited[u] = true;    // MARK THE CURRENT NODE OF THE PLAYER 1 AS VISITED
+        // IF THERE ARE SHIPS OF THE OPPONENT PLAYER ON THE CURRENT NODE, SINK THEM
         if(graph[u].player2ShipNumber > 0){
             player2->shipArea = player2->shipArea - graph[u].player2ShipNumber;
             graph[u].player2ShipNumber = 0;
+            // IF THERE IS NO OPPONENT SHIP ON THE BOARD, PLAYER 1 WINS
             if(player2->shipArea == 0){
                 p1Win = true;
                 break;
             }
         }
-        p1queue.pop();
+        p1queue.pop();          // POP THE VISITED NODE FROM THE QUEUE
 
         //PLAYER 2 MAKES MOVE
         v = p2queue.front();
-        p2numVisited++;
-        p2Visited[v] = true;
+        p2numVisited++;         // PLAYER 2 VISITED A NODE
+        p2Visited[v] = true;    // MARK THE CURRENT NODE OF THE PLAYER 2 AS VISITED
+        // IF THERE ARE SHIPS OF THE OPPONENT PLAYER ON THE CURRENT NODE, SINK THEM
         if(graph[v].player1ShipNumber > 0){
             player1->shipArea = player1->shipArea - graph[v].player1ShipNumber;
             graph[v].player1ShipNumber = 0;
+            // IF THERE IS NO OPPONENT SHIP ON THE BOARD, PLAYER 1 WINS
             if(player1->shipArea == 0){
                 p2Win = true;
                 break;
             }
         }               
-        p2queue.pop();
+        p2queue.pop();          // POP THE VISITED NODE FROM THE QUEUE
         
-        //ITERATE ADJACENT NODES, IF THEY ARE NOT VISITED ADD THEM TO QUEUE
+        //ITERATE ADJACENT NODES OF CURRENT NODE OF THE PLAYER 1, IF THEY ARE NOT VISITED AND NOT IN THE QUEUE ADD THEM TO QUEUE
         for(std::vector<Node*>::iterator it = graph[u].connectedNodes.begin(); it != graph[u].connectedNodes.end(); it++){         
             if(!p1Visited[(*it)->vertice_number] && !p1NeighbourList[(*it)->vertice_number]){
                 p1queue.push((*it)->vertice_number);
-                p1KeptMemory++;
-                p1NeighbourList[(*it)->vertice_number] = true;
+                p1KeptMemory++; // ONE NODE WILL BE ADDED TO MEMORY TO VISIT 
+                p1NeighbourList[(*it)->vertice_number] = true;  // MARK THIS ADJACENT NODE AS 1 LEVEL UP IN THE BFS TREE SO THAT WE WILL NOT VISIT IT MORE THAN ONCE
             }                 
         }
+
+        //ITERATE ADJACENT NODES OF CURRENT NODE OF THE PLAYER 2, IF THEY ARE NOT VISITED AND NOT IN THE QUEUE ADD THEM TO QUEUE
         for(std::vector<Node*>::iterator it2 = graph[v].connectedNodes.begin(); it2 != graph[v].connectedNodes.end(); it2++){         
             if(!p2Visited[(*it2)->vertice_number] && !p2NeighbourList[(*it2)->vertice_number]){
                 p2queue.push((*it2)->vertice_number);
-                p2KeptMemory++;
-                p2NeighbourList[(*it2)->vertice_number] = true;
+                p2KeptMemory++; // ONE NODE WILL BE ADDED TO MEMORY TO VISIT
+                p2NeighbourList[(*it2)->vertice_number] = true; // MARK THIS ADJACENT NODE AS 1 LEVEL UP IN THE BFS TREE SO THAT WE WILL NOT VISIT IT MORE THAN ONCE
             }                    
         }        
     }
@@ -211,60 +228,70 @@ void GameBoard::BFS(int p1index, int p2index){
         std::cout << "The result: Player2 won!" << std::endl;
     }
 }
+
 void GameBoard::DFS(int p1index, int p2index){
-    std::vector<bool> p1Visited(numNode, false);
-    std::vector<bool> p2Visited(numNode, false);
+    std::vector<bool> p1Visited(numNode, false);    // HOLDS VISITED NODES OF FIRST PLAYER
+    std::vector<bool> p2Visited(numNode, false);    // HOLDS VISITED NODES OF SECOND PLAYER
     int p1KeptMemory = 0, p2KeptMemory = 0;
     int p1numVisited = 0, p2numVisited = 0;
     std::stack<int> p1stack;
     std::stack<int> p2stack;
     bool p1Win = false, p2Win = false;
 
+    // WE FIRST PUSH THE STARTING NODES TO THE QUEUES
     p1stack.push(p1index);
     p1KeptMemory++;
     p2stack.push(p2index);
     p2KeptMemory++;
-    int u,v;
+    int u,v;    // HOLDS THE CURRENT NODE INDEXES, u:PLAYER 1, v:PLAYER 2
+
+    // LOOP UNTIL ALL THE NODES VISITED OR 1 OF THE PLAYERS WON
     while(!p1stack.empty() && !p2stack.empty() && !p1Win && !p2Win){
         //PLAYER 1 MAKES MOVE
         u = p1stack.top();
-        p1numVisited++;
-        p1Visited[u] = true;
+        p1numVisited++;         // PLAYER 1 VISITED A NODE
+        p1Visited[u] = true;    // MARK THE CURRENT NODE OF THE PLAYER 1 AS VISITED
+        // IF THERE ARE SHIPS OF THE OPPONENT PLAYER ON THE CURRENT NODE, SINK THEM
         if(graph[u].player2ShipNumber > 0){
             player2->shipArea = player2->shipArea - graph[u].player2ShipNumber;
             graph[u].player2ShipNumber = 0;
+            // IF THERE IS NO OPPONENT SHIP ON THE BOARD, PLAYER 1 WINS
             if(player2->shipArea == 0){
                 p1Win = true;
                 break;
             }
         }        
-        p1stack.pop();
+        p1stack.pop();      // POP THE VISITED NODE FROM THE QUEUE
 
         //PLAYER 2 MAKES MOVE
         v = p2stack.top();
-        p2numVisited++;
-        p2Visited[v] = true;
+        p2numVisited++;         // PLAYER 2 VISITED A NODE
+        p2Visited[v] = true;    // MARK THE CURRENT NODE OF THE PLAYER 2 AS VISITED
+        // IF THERE ARE SHIPS OF THE OPPONENT PLAYER ON THE CURRENT NODE, SINK THEM 
         if(graph[v].player1ShipNumber > 0){
             player1->shipArea = player1->shipArea - graph[v].player1ShipNumber;
             graph[v].player2ShipNumber = 0;
+            // IF THERE IS NO OPPONENT SHIP ON THE BOARD, PLAYER 2 WINS
             if(player1->shipArea == 0){
                 p2Win = true;
                 break;
             }
         }               
-        p2stack.pop();
+        p2stack.pop();      // POP THE VISITED NODE FROM THE QUEUE
 
+        //ITERATE ADJACENT NODES OF CURRENT NODE OF THE PLAYER 1, IF THEY ARE NOT VISITED, ADD THEM TO QUEUE
         //SINCE WE ARE USING STACK, ITERATE REVERSELY TO ESTABLISH PRIORITY
         for(std::vector<Node*>::reverse_iterator it = graph[u].connectedNodes.rbegin(); it != graph[u].connectedNodes.rend(); it++){         
             if(!p1Visited[(*it)->vertice_number]){
                 p1stack.push((*it)->vertice_number);
-                p1KeptMemory++;
+                p1KeptMemory++; // ONE NODE WILL BE ADDED TO MEMORY TO VISIT
             }                   
         }
+        //ITERATE ADJACENT NODES OF CURRENT NODE OF THE PLAYER 2, IF THEY ARE NOT VISITED, ADD THEM TO QUEUE
         for(std::vector<Node*>::reverse_iterator it2 = graph[v].connectedNodes.rbegin(); it2 != graph[v].connectedNodes.rend(); it2++){         
             if(!p2Visited[(*it2)->vertice_number]){
                 p2stack.push((*it2)->vertice_number);
-                p2KeptMemory++;
+                p2KeptMemory++; // ONE NODE WILL BE ADDED TO MEMORY TO VISIT
             }                    
         }        
     }
@@ -284,6 +311,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
+    // OPEN INPUT FILES FROM ARGUMENTS
     std::ifstream player1input;
     std::ifstream player2input;
     player1input.open(argv[1]);
@@ -293,6 +321,7 @@ int main(int argc, char** argv) {
         exit(1);
     }   
 
+    // READ INPUT FILES FOR BOTH PLAYERS
     std::string algorithmName;
     int boardSize;
     Coordinate2D player1Coord;
@@ -301,15 +330,19 @@ int main(int argc, char** argv) {
     int player2NumShips;
     player1input >> algorithmName >> player1Coord.x >> player1Coord.y >> boardSize >> player1NumShips;
     player2input >> algorithmName >> player2Coord.x >> player2Coord.y >> boardSize >> player2NumShips;
+
+    // CREATE PLAYERS 
     Player player1(player1Coord, player1NumShips);
     Player player2(player2Coord, player2NumShips);
     
+    // ADD SHIPS OF THE PLAYER 1 FROM INPUT FILE
     for(int i = 0; i< player1NumShips; ++i){
         Coordinate2D tmpStart, tmpEnd;
         player1input >> tmpStart.x >> tmpStart.y >> tmpEnd.x >> tmpEnd.y;
         player1.ships.push_back(Ship(tmpStart, tmpEnd));
         player1.shipArea += player1.ships[i].coordinates.size();
     }
+    // ADD SHIPS OF THE PLAYER 2 FROM INPUT FILE
     for(int i = 0; i< player2NumShips; ++i){
         Coordinate2D tmpStart, tmpEnd;
         player2input >> tmpStart.x >> tmpStart.y >> tmpEnd.x >> tmpEnd.y;
@@ -317,16 +350,17 @@ int main(int argc, char** argv) {
         player2.shipArea += player2.ships[i].coordinates.size();
     }    
 
+    // CREATE GAMEBOARD
     GameBoard board(boardSize, &player1, &player2);
     std::cout << "The algorithm: Player1: " << algorithmName << " Player2 " << algorithmName << std::endl;
     clock_t start_time, end_time, run_time;
-    start_time = (double)clock();
+    start_time = (double)clock();               // START TIMER
     if(algorithmName == std::string("BFS")){
         board.BFS((player1.init.x*boardSize + player1.init.y), (player2.init.x*boardSize + player2.init.y));
     } else {
         board.DFS((player1.init.x*boardSize + player1.init.y), (player2.init.x*boardSize + player2.init.y));
     }
-    end_time = (double)clock();
+    end_time = (double)clock();                 // END TIMER
     run_time = (double)(end_time - start_time);
     std::cout << "The running time: " << ((double)run_time/CLOCKS_PER_SEC)*1000.0 << "ms" << std::endl;
 

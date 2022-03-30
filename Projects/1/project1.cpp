@@ -4,6 +4,7 @@
 #include <queue>
 #include <stack>
 #include <time.h>
+#include <chrono>
 /*
 Name: Mustafa Izzet Mustu
 ID: 504211564
@@ -100,7 +101,7 @@ GameBoard::GameBoard(int boardSize, Player* p1, Player* p2){
     numNode = boardSize*boardSize;
     graph = std::vector<Node>(numNode);
 
-    // SINCE THE BOARD IS SQUARE, WE CAN ITERATE IN 2 FOORLOPS AND ASSIGN COORDINATES, INDEXES AND WE CAN CREATE EDGES
+    // SINCE THE BOARD IS SQUARE, WE CAN ITERATE IN 2 FOR LOOPS AND ASSIGN COORDINATES, INDEXES AND WE CAN CREATE EDGES
     for(int i = 0; i < boardSize; ++i){
         for(int j = 0; j < boardSize; ++j){
             int index = i*boardSize + j;
@@ -354,7 +355,9 @@ int main(int argc, char** argv) {
     GameBoard board(boardSize, &player1, &player2);
     std::cout << "The algorithm: Player1: " << algorithmName << " Player2 " << algorithmName << std::endl;
     clock_t start_time, end_time, run_time;
+    // std::chrono::time_point<std::chrono::system_clock> start, end;
     start_time = (double)clock();               // START TIMER
+    // start = std::chrono::system_clock::now();
     if(algorithmName == std::string("BFS")){
         board.BFS((player1.init.x*boardSize + player1.init.y), (player2.init.x*boardSize + player2.init.y));
     } else {
@@ -362,7 +365,10 @@ int main(int argc, char** argv) {
     }
     end_time = (double)clock();                 // END TIMER
     run_time = (double)(end_time - start_time);
+    // end = std::chrono::system_clock::now();
+    // std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "The running time: " << ((double)run_time/CLOCKS_PER_SEC)*1000.0 << "ms" << std::endl;
+    // std::cout << "The running time: " << elapsed_seconds.count() << "s" << std::endl;
 
     return 0;
 }
